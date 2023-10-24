@@ -5,41 +5,104 @@ let style = `
     :host {
       display:block;
     }
+    .main {
+        display:flex;
+        flex-direction:column;
+        justify-content:center;
+        align-items:center;
+        margin-bottom:1em;
+    }
+    .content {
+        display:flex;
+        gap:1em;
+    }
+    .left-container {
+        display:flex;
+        flex-direction:column;
+        gap:1em;
+        justify-content:center;
+        align-items:start;
+    }
+    .right-container {
+        height:500px;
+        overflow:hidden;
+        overflow-y:auto;
+    }
+    .console {
+        height:300px;
+        width:800px;
+        border:1px dotted black;
+        overflow:hidden;
+        overflow-y:auto;
+    }
+    .console__message {
+        background-color:#ccc;
+        padding:0.5em;
+    }
+    #how-to-trigger {
+        background-color: #ccc;
+        padding:0.5em;
+    }
     `;
 
 let formStateTemplate = `
             <style>
                 ${style}
             </style>
-            <h1>FormStateRestoreCallback not called with some "File" objects</h1>
-            <canvas id="canvas" width="500" height="500"></canvas>
-            <h2>Working scenario</h2>
-            <p>1. Append file(s) from a file input to a FormData object.</p>
-            <p>2. Call elementInternals.setFormValue() with said FormData object.</p>
-            <input type="file" id="fileUpload">
-            <p>Instructions: Select a file above, navigate back and forward again and see the results in the console.</p>
-            <h2>Working scenario</h2>
-            <p>1. Append a simple string to a FormData object.</p>
-            <p>2. Call elementInternals.setFormValue() with said FormData object.</p>
-            <button id="stringValue">elementInternals.setFormValue with string</button>
-            <p>Instructions: Press the button above, navigate back and forward again and see the results in the console.</p>
-            <h2>Non working scenario</h2>
-            <p>1. Append a file retrieved from the canvas above to a FormData object.</p>
-            <p>2. Call elementInternals.setFormValue() with said FormData object.</p>
-            <button id="fileFromCanvas">elementInternals.setFormValue with file from canvas</button>
-            <p>Instructions: Press the button above, navigate back and forward again and see the results in the console.</p>
-            <h3>Findings:</h3>
-            <ul>
-            <li>formStateRestoreCallback is not called in Chromium based browsers.</li>
-            <li>formStateRestoreCallback is not called in Chromium based browsers, even not when there are other values present in the FormData object.</li>
-            <li>formStateRestoreCallback is called in Firefox and with correct file.</li>
-            </ul>
+            <main class="main">
+                <div class="header">
+                    <h1>FormStateRestoreCallback not called in Chromium based browsers</h1>
+                </div>
+                <div class="content">
+                    <div class="left-container">
+                        <div id="console" class="console"></div>
+                        <canvas id="canvas" width="300" height="300"></canvas>
+                    </div>
+                    <div class="right-container">
+                        <div id="how-to-trigger">
+                            <p>When formStateRestore gets called depends on the browser used:</p>
+                            <p>Safari: navigate page back and forward.</p>
+                            <p>Firefox: refresh page.</p>
+                            <p>Chrome: in this example only very rarely does Chrome trigger the "formStateRestoreCallback". In my project i'm working on Chrome does reliabely call the "formStateRestoreCallback", Idon't know why it doesn't on this locally run script.</p>
+                            <p>!IMPORTANT: do a hard refresh between each test otherwise "formStateRestoreCallback" might get called with old value.</p>
+                        </div>
+                        <h2>Scenario with simple string</h2>
+                        <p>Appending a string to a FormData object and calling setFormValue with said FormData object</p>
+                        <button id="stringValue">elementInternals.setFormValue with string</button>
+                        <p>Instructions: Press the button above, then <a href="#how-to-trigger">trigger formStateRestoreCallback</a>.</p>
+                        <h3>Findings:</h3>
+                        <p>- Both Firefox and Safari call formStateRestoreCallback and give back FormData object with correct value.</p>
+                        <p>- Chrome not calling formStateRestoreCallback.</p>
+                        <h2>Scenario with uploaded file</h2>
+                        <p>Appending uploaded files to a FormData object and calling setFormValue with said FormData object</p>
+                        <input type="file" id="fileUpload">
+                        <p>Instructions: Select a file using the file input, then <a href="#how-to-trigger">trigger formStateRestoreCallback</a></p>
+                        <h3>Findings:</h3>
+                        <p>- Firefox calls formStateRestoreCallback and returns file object in FormData object</p>
+                        <p>- Safari not calling formStateRestoreCallback. (Safari shows message in console (when calling internals.setFormValue) that File objects are not supported in form state)</p>
+                        <p>- Chrome calls formStateRestoreCallback (only when navigating page back and forward), and returns file object in FormData object</p>
+                        <h2>Scenario with File from canvas</h2>
+                        <p>Appending a File object retrieved from canvas to a FormData object and calling setFormValue</p>
+                        <button id="fileFromCanvas">elementInternals.setFormValue with file from canvas</button>
+                        <p>Instructions: Press the button above, then <a href="#how-to-trigger">trigger formStateRestoreCallback</a>.
+                        <h3>Findings:</h3>
+                        <p>- Only Firefox calls formStateRestoreCallback and returns file object in FormData object</p>
+                        <p>- Chrome and Safari not calling formStateRestoreCallback. (Safari shows message in console (when calling internals.setFormValue) that File objects are not supported in form state)</p>
+                        <p>- Chrome NEVER calls formStateRestoreCallback when using a File retrieved from a canvas (This was the originally reported bug)</p>
+                    </div>
+                </div>
+            </main>
             `;
 
 class FormStateComponent extends HTMLElement {
 
     static formAssociated = true;
+
     #canvas;
+    #console;
+    #fileUpload;
+    #stringValue;
+    #fileFromCanvas;
     #internals;
 
     constructor() {
@@ -53,19 +116,14 @@ class FormStateComponent extends HTMLElement {
 
         // canvas
         this.#canvas = this.shadowRoot.querySelector('#canvas');
-        this.drawImageOnCanvas();
+        this.#console = this.shadowRoot.querySelector('#console');
+        this.#fileUpload = this.shadowRoot.querySelector('#fileUpload');
+        this.#stringValue = this.shadowRoot.querySelector('#stringValue');
+        this.#fileFromCanvas = this.shadowRoot.querySelector('#fileFromCanvas');
 
-        // add event listeners
-        this.shadowRoot.querySelector('#fileUpload').addEventListener('change', (e) => {
-            let files = e.target.files;
-            this.setFormValueUsingFileUpload(files);
-        })
-        this.shadowRoot.querySelector('#stringValue').addEventListener('click', () => {
-            this.setFormValueUsingSimpleString();
-        })
-        this.shadowRoot.querySelector('#fileFromCanvas').addEventListener('click', () => {
-            this.setFormValueUsingFileRetrievedFromCanvas();
-        })
+        //this.#console.innerText = '';// clearing console so it won't be filled when navigating back and forward
+        this.drawImageOnCanvas();
+        this.#addEventListeners();
 
     };
 
@@ -75,20 +133,37 @@ class FormStateComponent extends HTMLElement {
         this.shadowRoot.appendChild(template.content.cloneNode(true));
     }
 
+    #addEventListeners() {
+        // add event listeners
+        this.#fileUpload.addEventListener('change', (e) => {
+            let files = e.target.files;
+            this.setFormValueUsingFileUpload(files);
+        });
+
+        this.#stringValue.addEventListener('click', () => {
+            this.setFormValueUsingSimpleString();
+        });
+
+        this.#fileFromCanvas.addEventListener('click', () => {
+            this.setFormValueUsingFileRetrievedFromCanvas();
+        });
+    }
+
     async getFileFromUrl(url, fileName) {
+        let file;
         try {
             const response = await fetch(url);
             const blob = await response.blob();
             const mimeType = response.headers.get('content-type');
-            const file = new File([blob], fileName, {type: mimeType});
-            success(file);
+            file = new File([blob], fileName, {type: mimeType});
         } catch (error) {
             console.warn(`getFileFromUrl: could not get file: ${error}`);
         }
+        return file;
     }
 
     async canvasToFile(canvas) {
-        return await this.getFileFromUrl(canvas.toDataURL('image/png', 1), 'testfile.png');
+        return await this.getFileFromUrl(canvas.toDataURL('image/png', 1), 'testFile.png');
     }
 
     drawImageOnCanvas() {
@@ -101,42 +176,65 @@ class FormStateComponent extends HTMLElement {
         img.src = 'testImage.jpeg';
     }
 
-    formStateRestoreCallback(state, mode) {
-        console.log('formStateRestoreCallback called. State', state, 'Mode', mode);
-        let formData = state;
-        // console.log('state contents:', Object.fromEntries(state));
+    #formDataToObject(formData) {
         let formDataObject = {};
-        formData.forEach((value, key) => {
+        console.log('formData', formData);
+
+        let formDataArray = Array.from(formData);
+        formDataArray.forEach((value, key) => {
             formDataObject[key] = value;
         });
-        console.log('FormData contents as an object', formDataObject);
+        return formDataObject
+    }
+    formStateRestoreCallback(state, mode) {
+        console.log('formStateRestoreCallback called. state:', state);
+        this.#addObjectToSimulatedConsole('formStateRestoreCallback called with value', state);
+    }
+
+    formAssociatedCallback(form) {
+        console.log('Associated with form', form);
     }
 
     setFormValueUsingFileUpload(files) {
-        console.log('setFormValue using FormData object with a File object appended from the file upload input.')
         let formData = new FormData();
         for (let file of files) {
             formData.append('fileValue', file);
         }
-        this.#internals.setFormValue(formData);
+
+        this.#internals.setFormValue(formData, formData);
+
+        this.#addObjectToSimulatedConsole('this.#internals.setFormValue() called with FormData object containing a File object retrieved from upload', formData);
     }
 
     setFormValueUsingSimpleString() {
-        console.log('setFormValue using FormData object with a simple string.')
         let formData = new FormData();
         formData.append('string', 'Just a simple string');
-        this.#internals.setFormValue(formData);
+
+        this.#internals.setFormValue(formData, formData);
+
+        this.#addObjectToSimulatedConsole('this.#internals.setFormValue() called with FormData object containing simple string', formData);
     }
 
     async setFormValueUsingFileRetrievedFromCanvas() {
-        console.log('setFormValue using FormData object with a File object retrieved from canvas.')
 
         let file = await this.canvasToFile(this.#canvas);
+        
         let formData = new FormData();
         formData.append('fileValue', file);
-        formData.append('string', 'Just a simple string to demonstrate that formStateRestoreCallback is not called at all, even when other values are present that would normally trigger it');
+        formData.append('string', 'Just a simple string');
 
-        this.#internals.setFormValue(formData);
+        this.#internals.setFormValue(formData, formData);
+
+        this.#addObjectToSimulatedConsole('ElementInternals setFormValue called with value', formData);
+    }
+
+    #addObjectToSimulatedConsole(introText, formData) {
+        let formDataAsObject = this.#formDataToObject(formData);
+        console.log(introText, formDataAsObject);
+        let div = document.createElement('div');
+        div.className = 'console__message';
+        div.innerText = `${introText}: ${JSON.stringify(formDataAsObject)}`;
+        this.#console.appendChild(div);
     }
 }
 
