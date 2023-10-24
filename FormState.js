@@ -24,6 +24,11 @@ let style = `
         overflow:hidden;
         overflow-y:auto;
     }
+    .console-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 1em;
+    }
     .console {
         height:300px;
         width:800px;
@@ -51,7 +56,10 @@ let formStateTemplate = `
                 </div>
                 <div class="content">
                     <div class="left-container">
-                        <div id="console" class="console"></div>
+                        <div class="console-wrapper">
+                            <span>Messages <strong>(see console in developer tools for more accurate / complete details)</strong></span>
+                            <div id="console" class="console"></div>
+                        </div>
                         <canvas id="canvas" width="300" height="300"></canvas>
                     </div>
                     <div class="right-container">
@@ -174,16 +182,6 @@ class FormStateComponent extends HTMLElement {
         img.src = 'testImage.jpeg';
     }
 
-    #formDataToObject(formData) {
-        let formDataObject = {};
-        console.log('formData', formData);
-
-        let formDataArray = Array.from(formData);
-        formDataArray.forEach((value, key) => {
-            formDataObject[key] = value;
-        });
-        return formDataObject
-    }
     formStateRestoreCallback(state, mode) {
         console.log('formStateRestoreCallback called. state:', state);
         this.#addObjectToSimulatedConsole('formStateRestoreCallback called with value', state);
@@ -196,21 +194,27 @@ class FormStateComponent extends HTMLElement {
     setFormValueUsingFileUpload(files) {
         let formData = new FormData();
         for (let file of files) {
-            formData.append('fileValue', file);
+            formData.append('file', file);
         }
 
-        this.#internals.setFormValue(formData, formData);
-
-        this.#addObjectToSimulatedConsole('this.#internals.setFormValue() called with FormData object containing a File object retrieved from upload', formData);
+        try {
+            this.#internals.setFormValue(formData);
+        } catch(error) {
+            console.log('error', error)
+        }
+        this.#addObjectToSimulatedConsole('this.#internals.setFormValue() called with value', formData);
     }
 
     setFormValueUsingSimpleString() {
         let formData = new FormData();
-        formData.append('string', 'Just a simple string');
+        formData.append('a_string', 'Just a simple string');
 
-        this.#internals.setFormValue(formData, formData);
-
-        this.#addObjectToSimulatedConsole('this.#internals.setFormValue() called with FormData object containing simple string', formData);
+        try {
+            this.#internals.setFormValue(formData);
+        } catch(error) {
+            console.log('error', error)
+        }
+        this.#addObjectToSimulatedConsole('this.#internals.setFormValue called with with value', formData);
     }
 
     async setFormValueUsingFileRetrievedFromCanvas() {
@@ -218,17 +222,19 @@ class FormStateComponent extends HTMLElement {
         let file = await this.canvasToFile(this.#canvas);
         
         let formData = new FormData();
-        formData.append('fileValue', file);
-        formData.append('string', 'Just a simple string');
-
-        this.#internals.setFormValue(formData, formData);
-
-        this.#addObjectToSimulatedConsole('ElementInternals setFormValue called with value', formData);
+        formData.append('file', file);
+        formData.append('a_string', 'And a string');
+        try {
+            this.#internals.setFormValue(formData);
+        } catch(error) {
+            console.log('error', error)
+        }
+        this.#addObjectToSimulatedConsole('this.#internals.setFormValue called with value', formData);
     }
 
     #addObjectToSimulatedConsole(introText, formData) {
-        let formDataAsObject = this.#formDataToObject(formData);
-        console.log(introText, formDataAsObject);
+        let formDataAsObject = Object.fromEntries(formData);
+        console.log(introText, 'formData', formData, 'formData as object:', formDataAsObject);
         let div = document.createElement('div');
         div.className = 'console__message';
         div.innerText = `${introText}: ${JSON.stringify(formDataAsObject)}`;
