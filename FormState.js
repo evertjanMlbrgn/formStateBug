@@ -6,10 +6,6 @@ let style = `
       display:block;
     }
     .main {
-        display:flex;
-        flex-direction:column;
-        justify-content:center;
-        align-items:center;
         margin-bottom:1em;
     }
     .content {
@@ -20,10 +16,10 @@ let style = `
         display:flex;
         flex-direction:column;
         gap:1em;
-        justify-content:center;
+        justify-content:start;
         align-items:start;
     }
-    .right-container {
+    .scenarios {
         height:500px;
         overflow:hidden;
         overflow-y:auto;
@@ -39,7 +35,7 @@ let style = `
         background-color:#ccc;
         padding:0.5em;
     }
-    #how-to-trigger {
+    #info {
         background-color: #ccc;
         padding:0.5em;
     }
@@ -59,36 +55,38 @@ let formStateTemplate = `
                         <canvas id="canvas" width="300" height="300"></canvas>
                     </div>
                     <div class="right-container">
-                        <div id="how-to-trigger">
-                            <p>When formStateRestore gets called depends on the browser used:</p>
-                            <p>Safari: navigate page back and forward.</p>
-                            <p>Firefox: refresh page.</p>
-                            <p>Chrome: in this example only very rarely does Chrome trigger the "formStateRestoreCallback". In my project i'm working on Chrome does reliabely call the "formStateRestoreCallback", Idon't know why it doesn't on this locally run script.</p>
-                            <p>!IMPORTANT: do a hard refresh between each test otherwise "formStateRestoreCallback" might get called with old value.</p>
+                        <div id="info">
+                            <h2>How to trigger "formStateRestoreCallback" (depends on the browser used)</h2>
+                            <p>Safari: Navigate page back and forward. (Works incosistently and only for Scenario 1)</p>
+                            <p>Firefox: Refresh page. (Works consitently and in all scenarios)</p>
+                            <p>Chrome: In my local environment only "Scenario 2" triggers "formStateRestoreCallback" in Chrome.</p>
+                            <p>Make sure to perform each test in clean browser state.</p>
                         </div>
-                        <h2>Scenario with simple string</h2>
-                        <p>Appending a string to a FormData object and calling setFormValue with said FormData object</p>
-                        <button id="stringValue">elementInternals.setFormValue with string</button>
-                        <p>Instructions: Press the button above, then <a href="#how-to-trigger">trigger formStateRestoreCallback</a>.</p>
-                        <h3>Findings:</h3>
-                        <p>- Both Firefox and Safari call formStateRestoreCallback and give back FormData object with correct value.</p>
-                        <p>- Chrome not calling formStateRestoreCallback.</p>
-                        <h2>Scenario with uploaded file</h2>
-                        <p>Appending uploaded files to a FormData object and calling setFormValue with said FormData object</p>
-                        <input type="file" id="fileUpload">
-                        <p>Instructions: Select a file using the file input, then <a href="#how-to-trigger">trigger formStateRestoreCallback</a></p>
-                        <h3>Findings:</h3>
-                        <p>- Firefox calls formStateRestoreCallback and returns file object in FormData object</p>
-                        <p>- Safari not calling formStateRestoreCallback. (Safari shows message in console (when calling internals.setFormValue) that File objects are not supported in form state)</p>
-                        <p>- Chrome calls formStateRestoreCallback (only when navigating page back and forward), and returns file object in FormData object</p>
-                        <h2>Scenario with File from canvas</h2>
-                        <p>Appending a File object retrieved from canvas to a FormData object and calling setFormValue</p>
-                        <button id="fileFromCanvas">elementInternals.setFormValue with file from canvas</button>
-                        <p>Instructions: Press the button above, then <a href="#how-to-trigger">trigger formStateRestoreCallback</a>.
-                        <h3>Findings:</h3>
-                        <p>- Only Firefox calls formStateRestoreCallback and returns file object in FormData object</p>
-                        <p>- Chrome and Safari not calling formStateRestoreCallback. (Safari shows message in console (when calling internals.setFormValue) that File objects are not supported in form state)</p>
-                        <p>- Chrome NEVER calls formStateRestoreCallback when using a File retrieved from a canvas (This was the originally reported bug)</p>
+                        <div class="scenarios">
+                            <h2>Scenario 1: Simple string</h2>
+                            <p>Appending a string to a FormData object and calling setFormValue with said FormData object</p>
+                            <button id="stringValue">elementInternals.setFormValue with string</button>
+                            <p>Instructions: Press the button above, then trigger formStateRestoreCallback.</p>
+                            <h3>Findings:</h3>
+                            <p>- Both Firefox and Safari call formStateRestoreCallback and give back FormData object with correct value.</p>
+                            <p>- Chrome not calling formStateRestoreCallback.</p>
+                            <h2 id="scenario2">Scenario 2: Uploaded file</h2>
+                            <p>Appending uploaded files to a FormData object and calling setFormValue with said FormData object</p>
+                            <input type="file" id="fileUpload">
+                            <p>Instructions: Select a file using the file input, then trigger formStateRestoreCallback</p>
+                            <h3>Findings:</h3>
+                            <p>- Firefox calls formStateRestoreCallback and returns file object in FormData object</p>
+                            <p>- Safari not calling formStateRestoreCallback. (Safari shows message in console (when calling internals.setFormValue) that File objects are not supported in form state)</p>
+                            <p>- Chrome calls formStateRestoreCallback (only when navigating page back and forward), and returns file object in FormData object</p>
+                            <h2>Scenario 3: File object retrieved from canvas</h2>
+                            <p>Appending a File object retrieved from canvas to a FormData object and calling setFormValue</p>
+                            <button id="fileFromCanvas">elementInternals.setFormValue with file from canvas</button>
+                            <p>Instructions: Press the button above, then trigger formStateRestoreCallback.</p>
+                            <h3>Findings:</h3>
+                            <p>- Only Firefox calls formStateRestoreCallback and returns file object in FormData object</p>
+                            <p>- Chrome and Safari not calling formStateRestoreCallback. (Safari shows message in console (when calling internals.setFormValue) that File objects are not supported in form state)</p>
+                            <p>- Chrome NEVER calls formStateRestoreCallback when using a File retrieved from a canvas (This was the originally reported bug)</p>
+                        </div>
                     </div>
                 </div>
             </main>
@@ -121,7 +119,7 @@ class FormStateComponent extends HTMLElement {
         this.#stringValue = this.shadowRoot.querySelector('#stringValue');
         this.#fileFromCanvas = this.shadowRoot.querySelector('#fileFromCanvas');
 
-        //this.#console.innerText = '';// clearing console so it won't be filled when navigating back and forward
+        this.#console.innerHTML = '';// clearing console, so it won't be filled when navigating back and forward
         this.drawImageOnCanvas();
         this.#addEventListeners();
 
