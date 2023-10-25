@@ -65,9 +65,10 @@ let formStateTemplate = `
                     <div class="right-container">
                         <div id="info">
                             <h2>How to trigger "formStateRestoreCallback" (depends on the browser used)</h2>
-                            <p>Safari: Navigate page back and forward. (Works incosistently and only for Scenario 1)</p>
+                            <p>"Page navigation" means navigate page back and forward.</p>
+                            <p>Safari: Page navigation. (Works incosistently and only for Scenario 1)</p>
                             <p>Firefox: Refresh page. (Works consitently and in all scenarios)</p>
-                            <p>Chrome: In my local environment only "Scenario 2" triggers "formStateRestoreCallback" in Chrome.</p>
+                            <p>Chrome: In my local environment only "Scenario 2" triggers "formStateRestoreCallback" in Chrome on page navigation.</p>
                             <p>Make sure to perform each test in clean browser state.</p>
                         </div>
                         <div class="scenarios">
@@ -85,7 +86,7 @@ let formStateTemplate = `
                             <h3>Findings:</h3>
                             <p>- Firefox calls formStateRestoreCallback and returns file object in FormData object</p>
                             <p>- Safari not calling formStateRestoreCallback. (Safari shows message in console (when calling internals.setFormValue) that File objects are not supported in form state)</p>
-                            <p>- Chrome calls formStateRestoreCallback (only when navigating page back and forward), and returns file object in FormData object</p>
+                            <p>- Chrome calls formStateRestoreCallback (only on page navigation), and returns file object in FormData object</p>
                             <h2>Scenario 3: File object retrieved from canvas</h2>
                             <p>Appending a File object retrieved from canvas to a FormData object and calling setFormValue</p>
                             <button id="fileFromCanvas">elementInternals.setFormValue with file from canvas</button>
@@ -179,7 +180,10 @@ class FormStateComponent extends HTMLElement {
         img.onload = function () {
             ctx.drawImage(img, 0, 0);
         };
-        img.src = 'testImage.jpeg';
+        img.onerror = function() {
+            console.log('could not load image')
+        }
+        img.src = 'testimage.jpeg';
     }
 
     formStateRestoreCallback(state, mode) {

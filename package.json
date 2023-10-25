@@ -1,0 +1,28 @@
+{
+  "name": "formstatebug",
+  "version": "1.0.0",
+  "description": "Demonstration a bug / bugs in Chromium based web browsers",
+  "main": "formState.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/evertjanMlbrgn/formStateBug.git"
+  },
+  "keywords": [
+    "bug",
+    "formStateRestoreCallback",
+    "Chrome",
+    "Chromium"
+  ],
+  "author": "Evertjan Garretsen",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/evertjanMlbrgn/formStateBug/issues"
+  },
+  "homepage": "https://github.com/evertjanMlbrgn/formStateBug#readme",
+  "dependencies": {
+
+  }
+}
