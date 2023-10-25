@@ -3,14 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <title>Bug demo</title>
+    <style>
+        html {
+            height:100%;
+        }
+        body {
+            background-color: powderblue;
+            height:100%;
+            overflow:hidden;
+        }
+        .form-container {
+            height:100%;
+        }
+        .form {
+            display:flex;
+            flex-direction: column;
+            min-height:0;
+            height:100%;
+        }
+        .form-state {
+            height:100%;
+            flex:1 1;
+            min-height:0;
+        }
+        .fieldset {
+            flex:0 0;
+        }
+    </style>
 </head>
-<body>
-<form method="POST" enctype="multipart/form-data">
-    <form-state></form-state>
-    <label for="dummyTextInput"></label>
-    <input type="text" id="dummyTextInput" name="dummy-field" value="Dummy text input">
-    <input type="submit" value="Dummy submit">
-</form>
-<script src="formState.js"></script>
-</body>
+    <body>
+        <div class="form-container">
+            <form class="form" method="POST" enctype="multipart/form-data">
+<!--                <div class="form-state"></div>-->
+                                <form-state class="form-state"></form-state>
+                <fieldset class="fieldset">
+                    <label for="dummyTextInput"></label>
+                    <input type="text" id="dummyTextInput" name="dummy-field" value="Dummy text input">
+                    <input type="submit" value="Dummy submit">
+                </fieldset>
+            </form>
+        </div>
+        <script src="formState.js"></script>
+    </body>
 </html>
